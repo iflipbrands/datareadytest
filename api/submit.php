@@ -16,7 +16,7 @@ if ($raw === false || strlen($raw) > 65536) {
     json_response(413, ['ok' => false, 'error' => 'The submitted report is too large.']);
 }
 $input = json_decode($raw, true);
-if (!is_array($input) || ($input['consent'] ?? false) !== true || !isset($input['participant'], $input['answers']) || !is_array($input['participant']) || !is_array($input['answers'])) {
+if (!is_array($input) || ($input['termsAccepted'] ?? false) !== true || !isset($input['participant'], $input['answers']) || !is_array($input['participant']) || !is_array($input['answers'])) {
     json_response(400, ['ok' => false, 'error' => 'The submitted report is incomplete.']);
 }
 $name = trim((string)($input['participant']['name'] ?? ''));
@@ -71,8 +71,8 @@ try {
         'submitted_at' => gmdate(DATE_ATOM),
         'site' => APP_NAME,
         'participant' => ['name' => $name, 'email' => $email],
-        'consent' => true,
-        'consented_at' => gmdate(DATE_ATOM),
+        'terms_accepted' => true,
+        'terms_accepted_at' => gmdate(DATE_ATOM),
         'completion' => '6 of 6 activities completed',
         'score_type' => 'Completion only; no accuracy score calculated.',
         'answers' => $answers,
@@ -81,7 +81,7 @@ try {
         array_unshift($records, $record);
         return $records;
     });
-    json_response(201, ['ok' => true, 'message' => 'Your results were saved for the site administrator.']);
+    json_response(201, ['ok' => true, 'message' => 'Your practice report was saved.']);
 } catch (Throwable $e) {
     error_log('DataReadyTest result save failed: ' . $e->getMessage());
     json_response(500, ['ok' => false, 'error' => 'The report could not be saved right now. Please try again later.']);
