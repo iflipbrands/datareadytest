@@ -12,77 +12,47 @@ if ($contentType !== 'application/json') {
     json_response(415, ['ok' => false, 'error' => 'Expected a JSON request.']);
 }
 $raw = file_get_contents('php://input');
-if ($raw === false || strlen($raw) > 65536) {
-    json_response(413, ['ok' => false, 'error' => 'The submitted report is too large.']);
+if ($raw === false || strlen($raw) > 8192) {
+    json_response(413, ['ok' => false, 'error' => 'The submitted summary is too large.']);
 }
 $input = json_decode($raw, true);
-if (!is_array($input) || ($input['termsAccepted'] ?? false) !== true || !isset($input['participant'], $input['answers']) || !is_array($input['participant']) || !is_array($input['answers'])) {
-    json_response(400, ['ok' => false, 'error' => 'The submitted report is incomplete.']);
+if (!is_array($input)
+    || ($input['termsAccepted'] ?? false) !== true
+    || !isset($input['participant'])
+    || !is_array($input['participant'])
+    || !is_int($input['completedActivities'] ?? null)
+    || !is_int($input['totalActivities'] ?? null)
+    || !is_int($input['durationSeconds'] ?? null)) {
+    json_response(400, ['ok' => false, 'error' => 'The submitted summary is incomplete.']);
 }
 $name = trim((string)($input['participant']['name'] ?? ''));
-$email = trim((string)($input['participant']['email'] ?? ''));
-if ($name === '' || strlen($name) > 200 || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
-    json_response(400, ['ok' => false, 'error' => 'Please check the name and email in your report.']);
+$completed = $input['completedActivities'];
+$total = $input['totalActivities'];
+$duration = $input['durationSeconds'];
+if ($name === '' || strlen($name) > 200) {
+    json_response(400, ['ok' => false, 'error' => 'Please check the participant name.']);
 }
-if (count($input['answers']) !== 6) {
-    json_response(400, ['ok' => false, 'error' => 'A complete six-activity report is required.']);
-}
-$allowedCategories = ['Following Instructions', 'Visual Quality', 'Naturalness', 'Overall Preference'];
-$allowedJudgments = ['A', 'B', 'Both Good', 'Both Bad'];
-$answers = [];
-foreach (array_values($input['answers']) as $answer) {
-    if (!is_array($answer) || !isset($answer['activity'])) {
-        json_response(400, ['ok' => false, 'error' => 'One of the activity responses is invalid.']);
-    }
-    $activity = trim((string)$answer['activity']);
-    if ($activity === '' || strlen($activity) > 120) {
-        json_response(400, ['ok' => false, 'error' => 'An activity name is invalid.']);
-    }
-    if (isset($answer['criteria'])) {
-        if (!is_array($answer['criteria']) || count($answer['criteria']) !== 4) {
-            json_response(400, ['ok' => false, 'error' => 'A calibration activity must contain four criteria.']);
-        }
-        $criteria = [];
-        foreach (array_values($answer['criteria']) as $criterion) {
-            if (!is_array($criterion) || !in_array($criterion['criterion'] ?? null, $allowedCategories, true) || !in_array($criterion['judgment'] ?? null, $allowedJudgments, true)) {
-                json_response(400, ['ok' => false, 'error' => 'A calibration judgment is invalid.']);
-            }
-            $explanation = trim((string)($criterion['explanation'] ?? ''));
-            if ($explanation === '' || text_length($explanation) > 250) {
-                json_response(400, ['ok' => false, 'error' => 'Each judgment needs an explanation of no more than 250 characters.']);
-            }
-            $criteria[] = ['criterion' => $criterion['criterion'], 'judgment' => $criterion['judgment'], 'explanation' => $explanation];
-        }
-        $answers[] = ['activity' => $activity, 'criteria' => $criteria];
-    } else {
-        if (!in_array($answer['judgment'] ?? null, $allowedJudgments, true)) {
-            json_response(400, ['ok' => false, 'error' => 'A practice judgment is invalid.']);
-        }
-        $explanation = trim((string)($answer['explanation'] ?? ''));
-        if ($explanation === '' || text_length($explanation) > 250) {
-            json_response(400, ['ok' => false, 'error' => 'Each judgment needs an explanation of no more than 250 characters.']);
-        }
-        $answers[] = ['activity' => $activity, 'judgment' => $answer['judgment'], 'explanation' => $explanation];
-    }
+if ($completed !== 6 || $total !== 6 || $duration < 0 || $duration > 43200) {
+    json_response(400, ['ok' => false, 'error' => 'A complete six-activity summary with a valid elapsed time is required.']);
 }
 try {
     $record = [
         'id' => bin2hex(random_bytes(16)),
         'submitted_at' => gmdate(DATE_ATOM),
-        'site' => APP_NAME,
-        'participant' => ['name' => $name, 'email' => $email],
+        'participant' => ['name' => $name],
         'terms_accepted' => true,
         'terms_accepted_at' => gmdate(DATE_ATOM),
-        'completion' => '6 of 6 activities completed',
-        'score_type' => 'Completion only; no accuracy score calculated.',
-        'answers' => $answers,
+        'completed_activities' => $completed,
+        'total_activities' => $total,
+        'score_type' => 'Completion only; not an accuracy score.',
+        'duration_seconds' => $duration,
     ];
     update_json_file('results.json', static function (array $records) use ($record): array {
         array_unshift($records, $record);
         return $records;
     });
-    json_response(201, ['ok' => true, 'message' => 'Your practice report was saved.']);
+    json_response(201, ['ok' => true, 'message' => 'Your completion summary was saved.']);
 } catch (Throwable $e) {
-    error_log('DataReadyTest result save failed: ' . $e->getMessage());
-    json_response(500, ['ok' => false, 'error' => 'The report could not be saved right now. Please try again later.']);
+    error_log('DataReadyTest summary save failed: ' . $e->getMessage());
+    json_response(500, ['ok' => false, 'error' => 'The summary could not be saved right now. Please try again later.']);
 }
