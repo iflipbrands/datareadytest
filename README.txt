@@ -1,10 +1,11 @@
 DataReadyTest.online — Server-backed assessment
 
 WHAT IS INCLUDED
-- index.html: public assessment with a required storage-consent checkbox.
+- index.html: public practice assessment with a required Terms and Conditions checkbox.
 - admin.php: password-protected page for viewing and deleting completed reports.
 - api/submit.php: validates and stores a completed assessment.
 - privacy.html: participant privacy notice.
+- terms.html: practice assessment Terms and Conditions.
 - setup-admin.php: CLI-only initial admin credential setup.
 - includes/: shared server-side security and storage helpers.
 
@@ -22,7 +23,7 @@ INSTALL
 5. Test one completion using an email address you control; confirm it appears in the admin page and delete the test report afterward.
 
 RESULTS AND CONSENT
-A participant must check the consent box before beginning. On completion, the report is sent to the server. It is stored privately and is visible to the admin login. Records remain until the administrator deletes them. The admin page offers per-report deletion. The website does not send results by email.
+A participant must accept the Terms and Conditions before beginning. This is an independent practice assessment only; it is not an official company or work assessment, certification, accuracy score, or hiring decision. On completion, the report is sent to the server. It is stored privately and is visible to the admin login. Records remain until the administrator deletes them. The admin page offers per-report deletion. The website does not send results by email. See privacy.html for the data handling notice.
 
 SECURITY NOTES
 - Never host this PHP app on static-only hosting or with HTTPS disabled.
