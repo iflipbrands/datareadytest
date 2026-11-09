@@ -1,3 +1,0 @@
-# If your hosting requires private data under the web root, place this as
-# private_data/.htaccess and confirm access is denied from a browser.
-Require all denied
